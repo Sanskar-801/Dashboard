@@ -1,0 +1,1670 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>University Performance Dashboard — Multi-level</title>
+
+  <style>
+    /* ---------- Layout & global ---------- */
+    * { margin:0; padding:0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Arial, sans-serif; background:#ccd9e9; padding:20px; }
+    .dashboard-container { max-width:1600px; margin:0 auto; }
+
+    /* Filters */
+    .filters-section { background:white; border-radius:8px; padding:16px; margin-bottom:18px; box-shadow:0 2px 8px rgba(0,0,0,0.06); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .filters-left { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .filter-group { display:flex; flex-direction:column; }
+    .filter-label { font-size:12px; font-weight:600; color:#495057; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.5px; }
+    select { padding:8px 10px; border:1px solid #ced4da; border-radius:6px; font-size:14px; color:#495057; background:white; }
+    .apply-button { padding:8px 18px; background:#007bff; color:white; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    .back-button { padding:8px 14px; background:#e5e7eb; color:#111827; border:none; border-radius:6px; cursor:pointer; font-weight:600; }
+    #viewTitle { font-weight:700; color:#111827; margin-left:8px; }
+
+    /* KPI section */
+    .kpi-section { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:18px; }
+    .kpi-card { background:white; border-radius:8px; padding:16px; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .kpi-label { font-size:12px; font-weight:600; color:#6c757d; text-transform:uppercase; margin-bottom:8px; }
+    .kpi-value { font-size:28px; font-weight:700; color:#212529; margin-bottom:6px; }
+    .kpi-plan { font-size:13px; color:#6c757d; margin-bottom:8px; font-weight:600; }
+    .bullet-chart { height:8px; background:#e9ecef; border-radius:4px; overflow:hidden; margin-bottom:6px; }
+    .bullet-fill { height:100%; transition:width .4s ease; border-radius:4px; }
+    .bullet-fill.green{ background:#00C853; } .bullet-fill.red{ background:#FF5252; } .bullet-fill.grey{ background:#9E9E9E; }
+    .kpi-percentage { font-size:12px; font-weight:600; }
+
+    /* Table wrapper and table */
+    #tableWrapper { position:relative; overflow-y:auto; border:1px solid #ddd; margin-bottom:30px; max-height:610px; border-radius:8px; background:white; }
+    #mainTable { width:100%; border-collapse:collapse; min-width:1100px; }
+    thead th { position:sticky; top:0; background:#f3f4f6; z-index:3; font-weight:700; padding:10px 12px; text-align:left; }
+    tfoot .total-row { position:sticky; bottom:0; background:#f3f4f6; z-index:3; font-weight:700; border-top:2px solid #dee2e6; }
+    th, td { padding:12px 14px; border-bottom:1px solid #eee; text-align:left; vertical-align:middle; }
+    td:first-child, th:first-child { padding-left:20px; }
+    tbody tr:hover { background:#f8f9fa; }
+    .metric-cell { line-height:1.4; }
+    .actual-value { font-size:16px; font-weight:600; display:block; margin-bottom:4px; color:#111827; }
+    .plan-value { font-size:12px; color:#6c757d; display:block; margin-bottom:4px; }
+    .variance { font-size:12px; font-weight:500; display:block; }
+    .variance.positive{ color:#00C853; } .variance.negative{ color:#FF5252; } .variance.neutral{ color:#9E9E9E; }
+
+    .roas-cell { text-align:center; font-weight:700; }
+    .roas-cell.green { background-color: rgba(16,185,129,0.6); color:#064E3B; }
+    .roas-cell.amber { background-color: rgba(245,158,11,0.6); color:#7A2E0E; }
+    .roas-cell.red { background-color: rgba(239,68,68,0.6); color:#7F1D1D; }
+    .roas-cell .variance { color:#000 !important; }
+
+    .sort-btn { background:none; border:none; cursor:pointer; padding:0; margin:0; font-size:12px; color:#6b7280; display:inline-block; vertical-align:middle; }
+    .sort-btn:hover { color:#111827; }
+    .sort-btn.active { color:#111827; font-weight:700; }
+    /* Pull the second button left to eliminate inline whitespace gap */
+    .sort-btn + .sort-btn { margin-left:-6px; }
+
+    /* Table search */
+    .table-search { display:flex; align-items:center; gap:8px; margin:8px 0 10px 12px; }
+    .table-search input{ padding:8px 10px; border:1px solid #ced4da; border-radius:6px; font-size:14px; width:260px; }
+
+    /* Branding */
+    .brand-header { display:flex; align-items:center; gap:10px; margin-bottom:12px; }
+    .brand-logo { height:70px; width:auto; display:block; }
+
+    /* Chart containers */
+    .chart-card { margin-top:30px; padding:18px; border-radius:12px; background:white; box-shadow:0 2px 8px rgba(0,0,0,0.04); }
+    .chart-controls { display:flex; gap:12px; align-items:center; margin-bottom:12px; flex-wrap:wrap; }
+
+    /* Performance Tables Section */
+    .performance-tables-section { margin-top:30px; }
+    .performance-tables-header { display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px; }
+    .tables-controls { display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    .tables-container { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+    .performance-table-wrapper { background:white; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,0.06); }
+    .performance-table-wrapper h3 { background:#f3f4f6; margin:0; padding:14px 16px; font-size:16px; border-bottom:1px solid #e5e7eb; }
+    .performance-table { width:100%; border-collapse:collapse; }
+    .performance-table th, .performance-table td { padding:10px 12px; border-bottom:1px solid #e5e7eb; text-align:left; }
+    .performance-table th { background:#f9fafb; font-weight:600; font-size:13px; }
+    .performance-table tr:last-child td { border-bottom:none; }
+    .performance-table tr:hover { background:#f8f9fa; }
+    .performance-table .metric-value { font-weight:600; }
+    .performance-table .rank { font-weight:700; color:#6b7280; width:40px; }
+    .performance-table .no-data-message { text-align:center; padding:16px 12px; color:#6b7280; font-style:italic; }
+
+    /* Toggle switch */
+    .toggle-container { display:flex; align-items:center; gap:8px; }
+    .toggle-switch { position:relative; display:inline-block; width:60px; height:28px; }
+    .toggle-switch input { opacity:0; width:0; height:0; }
+    .toggle-slider { position:absolute; cursor:pointer; top:0; left:0; right:0; bottom:0; background-color:#e5e7eb; transition:.4s; border-radius:34px; }
+    .toggle-slider:before { position:absolute; content:""; height:20px; width:20px; left:4px; bottom:4px; background-color:white; transition:.4s; border-radius:50%; }
+    input:checked + .toggle-slider { background-color:#007bff; }
+    input:checked + .toggle-slider:before { transform:translateX(32px); }
+    .toggle-label { font-weight:600; color:#495057; }
+
+    /* small screens */
+    @media (max-width:900px) {
+      .kpi-section { grid-template-columns: repeat(2,1fr); }
+      thead th, td { padding:8px 10px; }
+      .tables-container { grid-template-columns:1fr; }
+    }
+
+    /* ===== Loading Screen Styles ===== */
+    #loadingScreen {
+      position: fixed;
+      inset: 0;
+      background: #ffffff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+      display: grid;
+      place-items: center;
+      padding-top: 120px; /* adjust this upward or downward */
+    }
+
+    #loadingScreen.hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loader-content {
+      text-align: center;
+      position: relative;
+      transform: translateY(30px); /* moves content slightly downward for perfect centering */
+    }
+
+    .logo-wrapper {
+      position: relative;
+      display: inline-block;
+      width: 220px;   /* larger ring */
+      height: 220px;
+    }
+
+    .loader-logo {
+      width: 140px;   /* larger logo */
+      height: auto;
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .spinner {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 220px;
+      height: 220px;
+      border: 6px solid #e0e7ff;
+      border-top-color: #2563eb;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      animation: spin 1.5s linear infinite;
+    }
+
+    @keyframes spin {
+      from { transform: translate(-50%, -50%) rotate(0deg); }
+      to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    .loading-text {
+      margin-top: 240px;  /* balanced under larger spinner */
+      font-size: 20px;
+      font-weight: 600;
+      color: #374151;
+      letter-spacing: 0.6px;
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <!-- ===== Loading Screen ===== -->
+  <div id="loadingScreen">
+    <div class="loader-content">
+      <div class="logo-wrapper">
+        <img src="teamlease-logo.png" alt="TeamLease EdTech" class="loader-logo" />
+        <div class="spinner"></div>
+      </div>
+      <div class="loading-text">Loading...</div>
+    </div>
+  </div>
+
+  <div class="dashboard-container">
+    <!-- Filters & Back button -->
+    <div class="filters-section">
+      <div class="filters-left">
+        <div class="filter-group">
+          <label class="filter-label">Duration Type</label>
+          <select id="durationType">
+            <option value="month">Monthly</option>
+            <option value="quarter">Quarterly</option>
+            <option value="year">Yearly</option>
+            <option value="all">YTD</option>
+          </select>
+        </div>
+
+        <!-- Updated Month Filter with separate Month and Year dropdowns -->
+        <div class="filter-group" id="monthFilter">
+          <label class="filter-label">Month</label>
+          <select id="monthSelect">
+            <option value="">All Months</option>
+            <option value="Jan">January</option>
+            <option value="Feb">February</option>
+            <option value="Mar">March</option>
+            <option value="Apr">April</option>
+            <option value="May">May</option>
+            <option value="Jun">June</option>
+            <option value="Jul">July</option>
+            <option value="Aug">August</option>
+            <option value="Sep">September</option>
+            <option value="Oct">October</option>
+            <option value="Nov">November</option>
+            <option value="Dec">December</option>
+          </select>
+        </div>
+
+        <div class="filter-group" id="monthYearFilter">
+          <label class="filter-label">Year</label>
+          <select id="yearForMonth">
+            <option value="">All Years</option>
+          </select>
+        </div>
+
+        <div class="filter-group" id="quarterFilter" style="display:none;">
+          <label class="filter-label">Quarter</label>
+          <select id="quarter">
+            <option value="">All Quarters</option>
+            <option value="Q1">Q1 (Jan-Mar)</option>
+            <option value="Q2">Q2 (Apr-Jun)</option>
+            <option value="Q3">Q3 (Jul-Sep)</option>
+            <option value="Q4">Q4 (Oct-Dec)</option>
+          </select>
+        </div>
+
+        <div class="filter-group" id="yearFilter" style="display:none;">
+          <label class="filter-label">Year</label>
+          <select id="year"><option value="">All Years</option></select>
+        </div>
+
+        <div class="filter-group" id="clusterFilter">
+          <label class="filter-label">Cluster</label>
+          <select id="cluster"><option value="">All Clusters</option></select>
+        </div>
+
+        <div style="align-self:flex-end;">
+          <button class="apply-button" onclick="applyFilters()">Apply Filters</button>
+        </div>
+      </div>
+
+      <div style="margin-left:auto; display:flex; gap:12px; align-items:center;">
+        <button id="backToMainBtn" class="back-button" style="display:none;" onclick="exitUniversityView()">Back to Main Dashboard</button>
+        <div id="viewTitle">Main Dashboard</div>
+        <img src="teamlease-logo.png" alt="TeamLease EdTech" class="brand-logo" />
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-section" id="kpiSection"></div>
+
+    <!-- Info / Errors -->
+    <div id="infoBanner" class="info-banner" style="display:none;"></div>
+    <div id="errorMessage" class="error" style="display:none;"></div>
+
+    <!-- Table Search + Table -->
+    <div class="table-search">
+      <label for="tableSearch" class="filter-label" style="margin:0;">Search</label>
+      <input id="tableSearch" type="text" placeholder="Search university or course..." oninput="applyFilters()" />
+    </div>
+    <div id="tableWrapper">
+      <div id="tableContainer" style="padding:12px;"></div>
+    </div>
+
+    <!-- Performance trend -->
+    <div class="chart-card">
+      <h3 style="margin-bottom:8px;">Performance Trend</h3>
+      <div class="chart-controls">
+        <div>
+          <label style="font-weight:600">Metric:</label>
+          <select id="metricSelect" style="margin-left:8px;">
+            <option>Revenue</option><option>Leads</option><option>Admissions</option><option>Spend</option><option>CPL</option><option>Conversion Rate</option><option>P&L</option><option>ROAS</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-weight:600">Duration:</label>
+          <select id="durationSelect" style="margin-left:8px;">
+            <option value="3">3 Months</option><option value="6">6 Months</option><option value="7" selected>7 Months</option><option value="12">1 Year</option>
+          </select>
+        </div>
+      </div>
+      <div style="height:400px;"><canvas id="performanceChart"></canvas></div>
+    </div>
+
+    <!-- YTD chart -->
+    <div class="chart-card">
+      <h3 style="margin-bottom:8px;">Year-to-Date Performance</h3>
+      <div class="chart-controls">
+        <div>
+          <label style="font-weight:600">Metric:</label>
+          <select id="ytdMetricSelect" style="margin-left:8px;">
+            <option>Revenue</option><option>Leads</option><option>Admissions</option><option>Spend</option><option>P&L</option><option>CPL</option><option>Conversion Rate</option><option>ROAS</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-weight:600">Year:</label>
+          <select id="yearSelect" style="margin-left:8px;"></select>
+        </div>
+      </div>
+      <div style="height:400px;"><canvas id="ytdPerformanceChart"></canvas></div>
+    </div>
+
+    <!-- Performance Tables Section -->
+    <div class="performance-tables-section" id="performanceTablesSection" style="display:none;">
+      <div class="chart-card">
+        <div class="performance-tables-header">
+          <h3>Performance Rankings</h3>
+          <div class="tables-controls">
+            <div class="toggle-container">
+              <label class="toggle-label">Show:</label>
+              <label class="toggle-switch">
+                <input type="checkbox" id="tableToggle" checked onchange="updatePerformanceTables()">
+                <span class="toggle-slider"></span>
+              </label>
+              <span id="toggleLabel" class="toggle-label">Top</span>
+            </div>
+            <div class="filter-group">
+              <label class="filter-label">Ranking Metric</label>
+              <select id="rankingMetric" onchange="updatePerformanceTables()">
+                <option value="leads">Leads</option>
+                <option value="admissions">Admissions</option>
+                <option value="spend">Spend</option>
+                <option value="revenue">Revenue</option>
+                <option value="pl">P&L</option>
+                <option value="cpl">CPL</option>
+                <option value="roas">ROAS</option>
+                <option value="conversionRate">Conversion Rate</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div class="tables-container">
+          <!-- Universities Table -->
+          <div class="performance-table-wrapper">
+            <h3 id="universitiesTableTitle">Top 10 Universities</h3>
+            <div id="universitiesTableContainer" style="overflow-y:visible; max-height:none;">
+              <table class="performance-table">
+                <thead>
+                  <tr>
+                    <th class="rank">#</th>
+                    <th>University</th>
+                    <th id="universitiesMetricHeader">Leads</th>
+                  </tr>
+                </thead>
+                <tbody id="universitiesTableBody">
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+          
+          <!-- Courses Table -->
+          <div class="performance-table-wrapper">
+            <h3 id="coursesTableTitle">Top 10 Courses</h3>
+            <div id="coursesTableContainer" style="overflow-y:visible; max-height:none;">
+              <table class="performance-table">
+                <thead>
+                  <tr>
+                    <th class="rank">#</th>
+                    <th>Course</th>
+                    <th>University</th>
+                    <th id="coursesMetricHeader">Leads</th>
+                  </tr>
+                </thead>
+                <tbody id="coursesTableBody">
+                  <!-- Will be populated by JavaScript -->
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  /**************************************************************************
+   * Multi-level Dashboard
+   * - loads Sheet1 (university-level) and Sheet2 (course-level)
+   * - click university -> university view (KPIs+charts from sheet1 filtered to that uni; table from sheet2 filtered to that uni)
+   * - back button returns to main view
+   *
+   * Config:
+   **************************************************************************/
+
+  const USE_SAMPLE_DATA = false;
+  // Base URL of your Apps Script Web App
+  const APPS_SCRIPT_BASE = 'https://script.google.com/a/macros/team-lease.co.in/s/AKfycbyoJambwMhkj5BwwRhD5vgvpUe8ZtEclU-J2JzAe_k--XssInw9gEh_OsxtcqmMWEeI/exec'; 
+  // e.g. 'https://script.google.com/macros/s/AKfycbx12345/exec'
+
+  // University-level sheet (the one that used to be Sheet1)
+  const SHEET_BASE_CSV = APPS_SCRIPT_BASE + '?sheet=Sheet1';
+
+  // Course-level sheet (the one that used to be using gid=1247653096)
+  const SHEET2_CSV = APPS_SCRIPT_BASE + '?sheet=Sheet2';
+
+
+  // fallback sample
+  const sampleData = [
+    { university:'AMET', cluster:'Cluster A', monthYear:'Apr 2024', month:'Apr', year:2024, monthIndex:3, leads:{actual:1850,plan:1700}, admissions:{actual:295,plan:272}, revenue:{actual:885000,plan:816000}, pl:{actual:266000,plan:245000}, spend:{actual:245000,plan:255000} },
+    { university:'AMET', cluster:'Cluster A', monthYear:'May 2024', month:'May', year:2024, monthIndex:4, leads:{actual:920,plan:850}, admissions:{actual:147,plan:136}, revenue:{actual:588000,plan:544000}, pl:{actual:176000,plan:163000}, spend:{actual:142000,plan:145000} },
+    { university:'University B', cluster:'Cluster B', monthYear:'Apr 2024', month:'Apr', year:2024, monthIndex:3, leads:{actual:890,plan:800}, admissions:{actual:142,plan:128}, revenue:{actual:355000,plan:320000}, pl:{actual:107000,plan:96000}, spend:{actual:118000,plan:120000} },
+  ];
+
+  // data stores
+  let allData = [];      // sheet1 (university-level)
+  let courseData = [];   // sheet2 (course-level)
+  let filteredData = []; // aggregated by uni OR courses depending on view
+  let totals = {};
+  let rankingFilteredUniversityRows = [];
+  let rankingFilteredCourseRows = [];
+  let currentFilterState = {
+    durationType: 'month',
+    selectedMonth: '',
+    selectedYearForMonth: '',
+    selectedQuarter: '',
+    selectedYear: '',
+    selectedCluster: ''
+  };
+
+  // state
+  let inUniversityView = false;
+  let currentUniversity = null;
+
+  /****************** CSV parsing & normalization ******************/
+  function parseCSV(text) {
+    // robust CSV parser supporting quoted fields and CRLF
+    const rows = [];
+    let cur = '', row = [], inQuotes = false;
+    for (let i=0;i<text.length;i++){
+      const ch = text[i];
+      const nxt = text[i+1];
+      if (ch === '"') {
+        if (inQuotes && nxt === '"') { cur += '"'; i++; continue; }
+        inQuotes = !inQuotes;
+        continue;
+      }
+      if (!inQuotes && (ch === '\n' || ch === '\r')) {
+        if (ch === '\r' && nxt === '\n') { i++; }
+        row.push(cur); rows.push(row); row=[]; cur=''; continue;
+      }
+      if (!inQuotes && ch === ',') { row.push(cur); cur=''; continue; }
+      cur += ch;
+    }
+    if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+    return rows.filter(r => !(r.length===1 && r[0]===''));
+  }
+
+  function normalizeHeader(h) {
+    return String(h||'').trim().replace(/\s+/g,'_').replace(/[^\w_]/g,'').toLowerCase();
+  }
+
+  function safeNum(v){
+    if (v===undefined || v===null || v==='') return 0;
+    const cleaned = String(v).replace(/[₹,]/g,'').trim();
+    const n = parseFloat(cleaned);
+    return isNaN(n)?0:n;
+  }
+
+  // map month short to index
+  const monthMap = {'jan':0,'feb':1,'mar':2,'apr':3,'may':4,'jun':5,'jul':6,'aug':7,'sep':8,'oct':9,'nov':10,'dec':11};
+
+  async function loadSheetCSV(url) {
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('Failed fetching CSV: ' + res.status);
+    const txt = await res.text();
+    return parseCSV(txt);
+  }
+
+  function rowsToObjects(rows) {
+    const headers = rows[0].map(normalizeHeader);
+    const dataRows = rows.slice(1);
+    const nowYear = new Date().getFullYear();
+    return dataRows.map(cols=>{
+      const obj={};
+      headers.forEach((h,i) => obj[h] = cols[i] !== undefined ? cols[i].trim() : '');
+      return obj;
+    });
+  }
+
+  // convert sheet1 rows -> normalized allData rows (university-level)
+  function normalizeSheet1(rows) {
+    // rows: array of objects keyed by normalized header names
+    return rows.map(obj=>{
+      // month/year handling
+      let monthRaw = (obj['month'] || obj['monthyear'] || '').trim();
+      let year = null;
+      const yearMatch = monthRaw.match(/(20\d{2}|19\d{2})/);
+      if (yearMatch) {
+        year = parseInt(yearMatch[0],10);
+        monthRaw = monthRaw.replace(yearMatch[0],'').trim();
+      }
+      if (!year && obj['year']) {
+        const y = parseInt(obj['year']); if (!isNaN(y)) year = y;
+      }
+      if (!year) year = new Date().getFullYear();
+      let monthShort = '';
+      if (monthRaw) {
+        const first = monthRaw.slice(0,3).toLowerCase();
+        monthShort = first.charAt(0).toUpperCase() + first.slice(1);
+      }
+
+      const r = {
+        university: obj['university'] || obj['college'] || '',
+        cluster: obj['cluster'] || '',
+        monthYear: (monthShort ? monthShort + ' ' + year : String(year)),
+        month: monthShort,
+        year: year,
+        monthIndex: monthMap[(monthShort||'').toLowerCase()] ?? 0,
+        leads: { actual: safeNum(obj['actual_leads'] || obj['actualleads'] || obj['leads_actual']), plan: safeNum(obj['revised_leads'] || obj['revisedleads'] || obj['revised_leads'] || obj['revisedleads']) },
+        admissions: { actual: safeNum(obj['actual_admissions'] || obj['admissions_actual']), plan: safeNum(obj['revised_admissions'] || obj['revised_admissions'] || obj['revisedadmissions']) },
+        revenue: { actual: safeNum(obj['actual_revenue'] || obj['revenue_actual']), plan: safeNum(obj['revised_revenue'] || obj['revised_revenue'] || obj['revisedrevenue']) },
+        pl: { actual: safeNum(obj['actual_pl'] || obj['pl_actual']), plan: safeNum(obj['revised_pl'] || obj['revised_pl'] || obj['revisedpl']) },
+        spend: { actual: safeNum(obj['actual_spend'] || obj['spend_actual'] || obj['actual_spend']), plan: safeNum(obj['revised_spend'] || obj['revised_spend'] || obj['revisedspend']) }
+      };
+      // ensure numbers
+      ['leads','admissions','revenue','pl','spend'].forEach(k=>{
+        Object.keys(r[k]).forEach(s => r[k][s] = Number(r[k][s]||0));
+      });
+      return r;
+    });
+  }
+
+  // convert sheet2 rows -> courseData entries
+  function normalizeSheet2(rows) {
+    return rows.map(obj=>{
+      let monthRaw = (obj['month'] || obj['monthyear'] || '').trim();
+      let year = null;
+      const yearMatch = monthRaw.match(/(20\d{2}|19\d{2})/);
+      if (yearMatch) { year = parseInt(yearMatch[0],10); monthRaw = monthRaw.replace(yearMatch[0],'').trim(); }
+      if (!year && obj['year']) { const y = parseInt(obj['year']); if (!isNaN(y)) year = y; }
+      if (!year) year = new Date().getFullYear();
+      let monthShort = '';
+      if (monthRaw) {
+        const first = monthRaw.slice(0,3).toLowerCase();
+        monthShort = first.charAt(0).toUpperCase() + first.slice(1);
+      }
+
+      return {
+        university: obj['university_name'] || obj['university'] || '',
+        course: obj['course'] || obj['course_name'] || '',
+        cluster: obj['cluster'] || '',
+        monthYear: (monthShort ? monthShort + ' ' + year : String(year)),
+        month: monthShort,
+        year: year,
+        monthIndex: monthMap[(monthShort||'').toLowerCase()] ?? 0,
+        leads: { actual: safeNum(obj['actual_leads'] || obj['actual_leads'] || obj['actualleads']), plan: safeNum(obj['revised_leads'] || obj['revised_leads'] || obj['revisedleads']) },
+        admissions: { actual: safeNum(obj['actual_admissions'] || obj['actual_admissions']), plan: safeNum(obj['revised_admissions'] || obj['revised_admissions']) },
+        spend: { actual: safeNum(obj['actual_spend'] || obj['actual_spend']), plan: safeNum(obj['revised_spend'] || obj['revised_spend']) },
+        revenue: { actual: safeNum(obj['actual_revenue'] || obj['actual_revenue']), plan: safeNum(obj['revised_revenue'] || obj['revised_revenue']) }
+      };
+    });
+  }
+
+  /****************** Initialization: load both sheets ******************/
+  async function init(){
+    try {
+      if (USE_SAMPLE_DATA) {
+        allData = sampleData.slice();
+        courseData = []; // no course sample
+      } else {
+        document.getElementById('tableContainer').innerHTML = '<div style="padding:18px;">Loading data from Google Sheets...</div>';
+        // load sheet1 (published csv)
+        const rows1 = await loadSheetCSV(SHEET_BASE_CSV);
+        const objs1 = rowsToObjects(rows1);
+        allData = normalizeSheet1(objs1);
+
+        // load sheet2 (course level)
+        const rows2 = await loadSheetCSV(SHEET2_CSV);
+        const objs2 = rowsToObjects(rows2);
+        courseData = normalizeSheet2(objs2);
+      }
+
+      // set up UI listeners
+      document.getElementById('durationType').onchange = function(){
+        const type = this.value;
+        document.getElementById('monthFilter').style.display = type==='month' ? 'flex' : 'none';
+        document.getElementById('monthYearFilter').style.display = type==='month' ? 'flex' : 'none';
+        document.getElementById('quarterFilter').style.display = type==='quarter' ? 'flex' : 'none';
+        document.getElementById('yearFilter').style.display = (type==='quarter' || type==='year') ? 'flex' : 'none';
+      };
+
+      // Trigger the change event to set initial filter visibility
+      document.getElementById('durationType').dispatchEvent(new Event('change'));
+
+      populateFilters();
+      applyFilters();
+
+      // initialize charts when data ready
+      initPerformanceChartWhenReady();
+      initYTDChartWhenReady();
+      // Hide loading screen after data is ready
+      document.getElementById('loadingScreen').classList.add('hidden');
+
+
+    } catch (err) {
+      console.error('Init error', err);
+      const em = document.getElementById('errorMessage');
+      em.textContent = 'Error loading data: ' + err.message;
+      em.style.display = 'block';
+      document.getElementById('tableContainer').innerHTML = '';
+    }
+  }
+
+  /****************** Filters population ******************/
+  function populateFilters(){
+    // Get unique years from data
+    const years = [...new Set(allData.map(r=>r.year))].filter(y=>y).sort((a,b)=>b-a);
+    
+    // Populate yearForMonth dropdown (for monthly filter)
+    const yearForMonthSelect = document.getElementById('yearForMonth');
+    yearForMonthSelect.innerHTML = '<option value="">All Years</option>';
+    years.forEach(y=>{ 
+      const opt=document.createElement('option'); 
+      opt.value=y; 
+      opt.textContent=y; 
+      yearForMonthSelect.appendChild(opt); 
+    });
+
+    // Populate year dropdown (for quarter/year filters)
+    const yearSelect = document.getElementById('year');
+    yearSelect.innerHTML = '<option value="">All Years</option>';
+    years.forEach(y=>{ 
+      const opt=document.createElement('option'); 
+      opt.value=y; 
+      opt.textContent=y; 
+      yearSelect.appendChild(opt); 
+    });
+
+    // cluster
+    const clusters = [...new Set(allData.map(r=>r.cluster || ''))].filter(c=>c).sort();
+    const clusterSelect = document.getElementById('cluster');
+    clusterSelect.innerHTML = '<option value="">All Clusters</option>';
+    clusters.forEach(c=>{ 
+      const opt=document.createElement('option'); 
+      opt.value=c; 
+      opt.textContent=c; 
+      clusterSelect.appendChild(opt); 
+    });
+
+    // ytd year select: fill later when charts initialize (use same years)
+    const yearSelectYTD = document.getElementById('yearSelect');
+    yearSelectYTD.innerHTML = '';
+    years.forEach(y=>{ 
+      const opt=document.createElement('option'); 
+      opt.value=y; 
+      opt.textContent=y; 
+      yearSelectYTD.appendChild(opt); 
+    });
+    if (years.length) yearSelectYTD.value = years[0];
+  }
+
+  /****************** Apply filters (and honor view state) ******************/
+  function applyFilters(){
+    // read filter values
+    const durationType = document.getElementById('durationType').value;
+    const selectedMonth = document.getElementById('monthSelect').value;
+    const selectedYearForMonth = document.getElementById('yearForMonth').value;
+    const selectedQuarter = document.getElementById('quarter').value;
+    const selectedYear = document.getElementById('year').value;
+    const selectedCluster = document.getElementById('cluster').value;
+    const searchTerm = (document.getElementById('tableSearch') && document.getElementById('tableSearch').value || '').toLowerCase().trim();
+
+    currentFilterState = {
+      durationType,
+      selectedMonth,
+      selectedYearForMonth,
+      selectedQuarter,
+      selectedYear,
+      selectedCluster
+    };
+
+    // filter base dataset: if in uni view, target allData filtered by university
+    let baseRows = allData.slice();
+    if (inUniversityView && currentUniversity) {
+      baseRows = baseRows.filter(r => r.university === currentUniversity);
+    }
+
+    // apply cluster filter
+    if (selectedCluster) baseRows = baseRows.filter(r=>r.cluster === selectedCluster);
+    // apply search filter (main view by university)
+    if (!inUniversityView && searchTerm) {
+      baseRows = baseRows.filter(r => (r.university || '').toLowerCase().includes(searchTerm));
+    }
+
+    // apply duration filters
+    let filtered = baseRows.filter(row=>{
+      if (durationType==='month') {
+        if (selectedMonth && row.month !== selectedMonth) return false;
+        if (selectedYearForMonth && String(row.year) !== String(selectedYearForMonth)) return false;
+      }
+      if (durationType==='quarter'){
+        if (selectedYear && String(row.year) !== String(selectedYear)) return false;
+        if (selectedQuarter && getQuarter(row.monthIndex) !== selectedQuarter) return false;
+      }
+      if (durationType==='year' && selectedYear && String(row.year) !== String(selectedYear)) return false;
+      return true;
+    });
+
+    // aggregate by university (main view) or by course (university view)
+    if (!inUniversityView) {
+      // aggregate by university
+      const agg = {};
+      filtered.forEach(r => {
+        const key = r.university || 'Unknown';
+        if (!agg[key]) {
+          agg[key] = {
+            university: key,
+            leads: { actual: 0, plan: 0 },
+            admissions: { actual: 0, plan: 0 },
+            revenue: { actual: 0, plan: 0 },
+            spend: { actual: 0, plan: 0 },
+            pl: { actual: 0, plan: 0 },
+            cpl: { actual: 0, plan: 0 },
+            roas: { actual: 0, plan: 0 }
+          };
+        }
+
+        const a = agg[key];
+        a.leads.actual += Number(r.leads.actual || 0);
+        a.leads.plan += Number(r.leads.plan || 0);
+        a.admissions.actual += Number(r.admissions.actual || 0);
+        a.admissions.plan += Number(r.admissions.plan || 0);
+        a.revenue.actual += Number(r.revenue.actual || 0);
+        a.revenue.plan += Number(r.revenue.plan || 0);
+        a.spend.actual += Number(r.spend.actual || 0);
+        a.spend.plan += Number(r.spend.plan || 0);
+      });
+
+      // after summing, compute CPL, ROAS, P&L per university
+      Object.values(agg).forEach(a => {
+        a.pl = {
+          actual: a.revenue.actual - a.spend.actual,
+          plan: a.revenue.plan - a.spend.plan
+        };
+        a.cpl = {
+          actual: a.leads.actual > 0 ? a.spend.actual / a.leads.actual : 0,
+          plan: a.leads.plan > 0 ? a.spend.plan / a.leads.plan : 0
+        };
+        a.roas = {
+          actual: a.spend.actual > 0 ? a.revenue.actual / a.spend.actual : 0,
+          plan: a.spend.plan > 0 ? a.revenue.plan / a.spend.plan : 0
+        };
+      });
+
+      filteredData = Object.values(agg).sort((a, b) => b.revenue.actual - a.revenue.actual);
+
+    } else {
+      // university view: show course-wise aggregated table using sheet2 (courseData)
+      // apply same duration filters and cluster and selectedYear
+      let courseRows = courseData.filter(r=> r.university === currentUniversity);
+      if (selectedCluster) courseRows = courseRows.filter(r=> r.cluster === selectedCluster);
+      // apply search filter (university view by course)
+      if (searchTerm) courseRows = courseRows.filter(r => (r.course || '').toLowerCase().includes(searchTerm));
+
+      courseRows = courseRows.filter(row=>{
+        if (durationType==='month') {
+          if (selectedMonth && row.month !== selectedMonth) return false;
+          if (selectedYearForMonth && String(row.year) !== String(selectedYearForMonth)) return false;
+        }
+        if (durationType==='quarter'){
+          if (selectedYear && String(row.year) !== String(selectedYear)) return false;
+          if (selectedQuarter && getQuarter(row.monthIndex) !== selectedQuarter) return false;
+        }
+        if (durationType==='year' && selectedYear && String(row.year) !== String(selectedYear)) return false;
+        return true;
+      });
+
+      // aggregate per course
+      const agg = {};
+      courseRows.forEach(r=>{
+        const k = r.course || 'Unknown Course';
+        if (!agg[k]) agg[k] = { course:k, leads:{actual:0,plan:0}, admissions:{actual:0,plan:0}, revenue:{actual:0,plan:0}, spend:{actual:0,plan:0} };
+        agg[k].leads.actual += Number(r.leads.actual||0); agg[k].leads.plan += Number(r.leads.plan||0);
+        agg[k].admissions.actual += Number(r.admissions.actual||0); agg[k].admissions.plan += Number(r.admissions.plan||0);
+        agg[k].revenue.actual += Number(r.revenue.actual||0); agg[k].revenue.plan += Number(r.revenue.plan||0);
+        agg[k].spend.actual += Number(r.spend.actual||0); agg[k].spend.plan += Number(r.spend.plan||0);
+      });
+      // compute CPL/ROAS/P&L per course
+      filteredData = Object.values(agg).map(row=>{
+        row.cpl = { actual: row.leads.actual>0 ? row.spend.actual/row.leads.actual : 0, plan: row.leads.plan>0 ? row.spend.plan/row.leads.plan : 0 };
+        row.roas = { actual: row.spend.actual>0 ? row.revenue.actual/row.spend.actual : 0, plan: row.spend.plan>0 ? row.revenue.plan/row.spend.plan : 0 };
+        row.pl = { actual: row.revenue.actual - row.spend.actual, plan: row.revenue.plan - row.spend.plan };
+        return row;
+      });
+    }
+
+    // compute totals (always from the filtered baseRows)
+    totals = { leads:{actual:0,plan:0}, admissions:{actual:0,plan:0}, spend:{actual:0,plan:0}, revenue:{actual:0,plan:0}, pl:{actual:0,plan:0} };
+    if (!inUniversityView) {
+      filteredData.forEach(r=>{
+        totals.leads.actual += r.leads.actual; totals.leads.plan += r.leads.plan;
+        totals.admissions.actual += r.admissions.actual; totals.admissions.plan += r.admissions.plan;
+        totals.spend.actual += r.spend.actual; totals.spend.plan += r.spend.plan;
+        totals.revenue.actual += r.revenue.actual; totals.revenue.plan += r.revenue.plan;
+        totals.pl.actual += r.pl.actual; totals.pl.plan += r.pl.plan;
+      });
+    } else {
+        // For university view: KPI totals should respect same duration/cluster filters as table
+        let uniRows = allData.filter(r => r.university === currentUniversity);
+
+        // Apply duration filters same as above
+        uniRows = uniRows.filter(row => {
+          if (durationType === 'month') {
+            if (selectedMonth && row.month !== selectedMonth) return false;
+            if (selectedYearForMonth && String(row.year) !== String(selectedYearForMonth)) return false;
+          }
+          if (durationType === 'quarter') {
+            if (selectedYear && String(row.year) !== String(selectedYear)) return false;
+            if (selectedQuarter && getQuarter(row.monthIndex) !== selectedQuarter) return false;
+          }
+          if (durationType === 'year' && selectedYear && String(row.year) !== String(selectedYear)) return false;
+          return true;
+        });
+
+        // Apply cluster filter (in case same university exists in multiple clusters)
+        if (selectedCluster) uniRows = uniRows.filter(r => r.cluster === selectedCluster);
+
+        // Compute totals from filtered subset
+        uniRows.forEach(r => {
+          totals.leads.actual += r.leads.actual; totals.leads.plan += r.leads.plan;
+          totals.admissions.actual += r.admissions.actual; totals.admissions.plan += r.admissions.plan;
+          totals.spend.actual += r.spend.actual; totals.spend.plan += r.spend.plan;
+          totals.revenue.actual += r.revenue.actual; totals.revenue.plan += r.revenue.plan;
+          totals.pl.actual += r.pl.actual; totals.pl.plan += r.pl.plan;
+        });
+      }
+
+    // derived totals
+    totals.cpl = { actual: totals.leads.actual>0 ? totals.spend.actual / totals.leads.actual : 0, plan: totals.leads.plan>0 ? totals.spend.plan / totals.leads.plan : 0 };
+    totals.roas = { actual: totals.spend.actual>0 ? totals.revenue.actual / totals.spend.actual : 0, plan: totals.spend.plan>0 ? totals.revenue.plan / totals.spend.plan : 0 };
+    totals.convRate = { actual: totals.leads.actual>0 ? (totals.admissions.actual / totals.leads.actual)*100 : 0, plan: totals.leads.plan>0 ? (totals.admissions.plan / totals.leads.plan)*100 : 0 };
+
+    // render UI
+    renderKPIs();
+    renderTable();
+    refreshRankingSources();
+    // Show/hide performance tables based on view
+    const tablesSection = document.getElementById('performanceTablesSection');
+    tablesSection.style.display = inUniversityView ? 'none' : 'block';
+    
+    // Update performance tables if we're in main view
+    if (!inUniversityView) {
+      updatePerformanceTables();
+    }
+    
+    // refresh charts (they individually observe allData or filtered subsets)
+    // performance & YTD chart renderers are set up to use allData filtered by inUniversityView when drawing
+    const metricSelect = document.getElementById('metricSelect');
+    const durationSelect = document.getElementById('durationSelect');
+    drawPerformanceTrend(metricSelect.value, parseInt(durationSelect.value));
+    const ytdMetric = document.getElementById('ytdMetricSelect').value;
+    const ytdYear = parseInt(document.getElementById('yearSelect').value) || new Date().getFullYear();
+    renderYTDChart(ytdMetric, ytdYear);
+  }
+
+  /****************** Render KPIs ******************/
+  function renderKPIs(){
+    const kpis = [
+      { label:'Leads', key:'leads', format:'integer' },
+      { label:'Spend', key:'spend', format:'currency' },
+      { label:'CPL', key:'cpl', format:'integer' },
+      { label:'P&L', key:'pl', format:'currency' },
+      { label:'Admissions', key:'admissions', format:'integer' },
+      { label:'Revenue', key:'revenue', format:'currency' },
+      { label:'Conversion Rate', key:'convRate', format:'percentage' },
+      { label:'ROAS', key:'roas', format:'decimal', highlight:true }
+    ];
+
+    let html='';
+    kpis.forEach(kpi=>{
+      const actual = (totals[kpi.key] && totals[kpi.key].actual!==undefined) ? totals[kpi.key].actual : 0;
+      const plan = (totals[kpi.key] && totals[kpi.key].plan!==undefined) ? totals[kpi.key].plan : 0;
+      const achievement = plan>0 ? (actual/plan)*100 : 0;
+      const bulletWidth = Math.min(Math.max(achievement,0),100);
+      const lowerIsBetter = (kpi.key === 'cpl' || kpi.key === 'spend');
+      let bulletClass = 'grey';
+      if (!lowerIsBetter) {
+        bulletClass = actual>plan ? 'green' : actual<plan ? 'red' : 'grey';
+      } else {
+        bulletClass = actual<plan ? 'green' : actual>plan ? 'red' : 'grey';
+      }
+
+      let actualDisplay, planDisplay;
+      if (kpi.format === 'currency') {
+        actualDisplay = '₹' + (actual.toLocaleString('en-IN',{maximumFractionDigits:0}));
+        planDisplay = '₹' + (plan.toLocaleString('en-IN',{maximumFractionDigits:0}));
+      } else if (kpi.format === 'percentage') {
+        actualDisplay = (actual).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+        planDisplay = (plan).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2}) + '%';
+      } else if (kpi.format === 'decimal') {
+        actualDisplay = (actual).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2});
+        planDisplay = (plan).toLocaleString('en-IN',{minimumFractionDigits:2, maximumFractionDigits:2});
+      } else if (kpi.format === 'integer') {
+        actualDisplay = (Math.round(actual)).toLocaleString('en-IN');
+        planDisplay = (Math.round(plan)).toLocaleString('en-IN');
+      } else {
+        actualDisplay = (actual).toLocaleString('en-IN');
+        planDisplay = (plan).toLocaleString('en-IN');
+      }
+
+      html += `
+        <div class="kpi-card ${kpi.highlight ? 'highlight':''}">
+          <div class="kpi-label">${kpi.label}</div>
+          <div class="kpi-value">${actualDisplay}</div>
+          <div class="kpi-plan">Plan: ${planDisplay}</div>
+          <div class="bullet-chart"><div class="bullet-fill ${bulletClass}" style="width:${bulletWidth}%"></div></div>
+          <div class="kpi-percentage ${bulletClass}">${achievement.toFixed(1)}%</div>
+        </div>
+      `;
+    });
+
+    document.getElementById('kpiSection').innerHTML = html;
+    // update view title and back button visibility
+    const viewTitle = document.getElementById('viewTitle');
+    const backBtn = document.getElementById('backToMainBtn');
+    if (inUniversityView && currentUniversity) {
+      viewTitle.textContent = `${currentUniversity}`;
+      backBtn.style.display = 'inline-block';
+      const clusterEl = document.getElementById('clusterFilter'); if (clusterEl) clusterEl.style.display = 'none';
+    } else {
+      viewTitle.textContent = 'Main Dashboard';
+      backBtn.style.display = 'none';
+      const clusterEl = document.getElementById('clusterFilter'); if (clusterEl) clusterEl.style.display = 'flex';
+    }
+  }
+
+  /****************** Render Table ******************/
+  function renderTable(){
+    if (!filteredData || filteredData.length === 0) {
+      document.getElementById('tableContainer').innerHTML = '<div style="padding:18px;">No data for selected filters</div>';
+      return;
+    }
+
+    // Build table header (columns same for both views, but first col label differs)
+    const firstColLabel = inUniversityView ? 'Course' : 'University';
+    let html = `
+      <table id="mainTable">
+        <thead>
+          <tr>
+            <th>${firstColLabel}
+              <button class="sort-btn" onclick="sortTable(0,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(0,'desc', this)">▼</button>
+            </th>
+            <th>Leads
+              <button class="sort-btn" onclick="sortTable(1,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(1,'desc', this)">▼</button>
+            </th>
+            <th>Admissions
+              <button class="sort-btn" onclick="sortTable(2,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(2,'desc', this)">▼</button>
+            </th>
+            <th>Spend
+              <button class="sort-btn" onclick="sortTable(3,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(3,'desc', this)">▼</button>
+            </th>
+            <th>Revenue
+              <button class="sort-btn" onclick="sortTable(4,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(4,'desc', this)">▼</button>
+            </th>
+            <th>CPL
+              <button class="sort-btn" onclick="sortTable(5,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(5,'desc', this)">▼</button>
+            </th>
+            <th>P&L
+              <button class="sort-btn" onclick="sortTable(6,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(6,'desc', this)">▼</button>
+            </th>
+            <th>ROAS
+              <button class="sort-btn" onclick="sortTable(7,'asc', this)">▲</button>
+              <button class="sort-btn" onclick="sortTable(7,'desc', this)">▼</button>
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+    `;
+
+    filteredData.forEach(row=>{
+      // determine classes and values depending on view
+      let nameCellHtml = '';
+      if (!inUniversityView) {
+        // main view: make university clickable
+        const uniName = row.university || '-';
+        nameCellHtml = `<button style="background:none;border:none;color:#2563eb;cursor:pointer;font-weight:600" onclick="enterUniversity('${escapeHtml(uniName)}')">${escapeHtml(uniName)}</button>`;
+      } else {
+        // university view: course cell (non-clickable)
+        nameCellHtml = escapeHtml(row.course || '-');
+      }
+
+      // roas class for row
+      const roasPlan = (row.roas && row.roas.plan) ? row.roas.plan : 0;
+      let roasClass = 'red';
+      if (roasPlan === 0) roasClass = 'amber';
+      else roasClass = (row.roas && row.roas.actual >= roasPlan) ? 'green' : (((roasPlan - (row.roas ? row.roas.actual : 0)) / roasPlan) <= 0.2 ? 'amber' : 'red');
+
+      html += `<tr>
+        <td>${nameCellHtml}</td>
+        <td>${createCell(row.leads || {actual:0,plan:0}, 'integer')}</td>
+        <td>${createCell(row.admissions || {actual:0,plan:0}, 'integer')}</td>
+        <td>${createCell(row.spend || {actual:0,plan:0}, 'currency', true)}</td>
+        <td>${createCell(row.revenue || {actual:0,plan:0}, 'currency')}</td>
+        <td>${createCell(row.cpl || {actual:0,plan:0}, 'integer', true)}</td>
+        <td>${createCell(row.pl || {actual:0,plan:0}, 'currency')}</td>
+        <td class="roas-cell ${roasClass}">${createCell(row.roas || {actual:0,plan:0}, 'decimal')}</td>
+      </tr>`;
+    });
+
+    // compute total roas class
+    const totalRoasPlan = totals.roas.plan || 0;
+    let totalRoasClass = 'red';
+    if (totalRoasPlan === 0) totalRoasClass = 'amber';
+    else totalRoasClass = totals.roas.actual >= totalRoasPlan ? 'green' : (((totalRoasPlan - totals.roas.actual)/totalRoasPlan) <= 0.2 ? 'amber' : 'red');
+
+    html += `</tbody>
+      <tfoot>
+        <tr class="total-row">
+          <td>Total</td>
+          <td>${createCell(totals.leads, 'integer')}</td>
+          <td>${createCell(totals.admissions, 'integer')}</td>
+          <td>${createCell(totals.spend, 'currency', true)}</td>
+          <td>${createCell(totals.revenue, 'currency')}</td>
+          <td>${createCell(totals.cpl, 'integer', true)}</td>
+          <td>${createCell(totals.pl, 'currency')}</td>
+          <td class="roas-cell ${totalRoasClass}">${createCell(totals.roas, 'decimal')}</td>
+        </tr>
+      </tfoot>
+    </table>`;
+
+    document.getElementById('tableContainer').innerHTML = html;
+    document.getElementById('tableWrapper').style.maxHeight = '610px';
+  }
+
+  /****************** Utility: escape HTML ******************/
+  function escapeHtml(s){
+    if (!s) return '';
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  /****************** Sorting ******************/
+  function sortTable(colIndex, direction, btnEl){
+    const table = document.getElementById('mainTable');
+    if (!table) return;
+    const tbody = table.querySelector('tbody');
+    let rows = Array.from(tbody.querySelectorAll('tr'));
+    // get last element check: if no rows return
+    if (rows.length === 0) return;
+
+    // parse function to extract numeric from cell text
+    const parseCell = (cellText) => {
+      // remove rupee and commas and percent
+      const cleaned = cellText.replace(/[₹,%\s]/g,'').replace(/--/g,'0');
+      const num = parseFloat(cleaned);
+      return isNaN(num) ? cellText.trim().toLowerCase() : num;
+    };
+
+    rows.sort((a,b)=>{
+      const aText = a.children[colIndex].innerText.trim();
+      const bText = b.children[colIndex].innerText.trim();
+      const aVal = parseCell(aText);
+      const bVal = parseCell(bText);
+      if (typeof aVal === 'number' && typeof bVal === 'number') {
+        return direction === 'asc' ? aVal - bVal : bVal - aVal;
+      } else {
+        if (aVal < bVal) return direction==='asc' ? -1 : 1;
+        if (aVal > bVal) return direction==='asc' ? 1 : -1;
+        return 0;
+      }
+    });
+
+    tbody.innerHTML = '';
+    rows.forEach(r => tbody.appendChild(r));
+
+    // Highlight active sort button
+    const allBtns = document.querySelectorAll('.sort-btn');
+    allBtns.forEach(b => b.classList.remove('active'));
+    if (btnEl) btnEl.classList.add('active');
+  }
+
+  /****************** createCell formatting ******************/
+  function createCell(data, format='number', lowerIsBetter=false){
+    const actual = Number((data && data.actual) || 0);
+    const plan = Number((data && data.plan) || 0);
+    const variance = plan>0 ? ((actual - plan)/plan)*100 : 0;
+    const isPositive = lowerIsBetter ? (variance < 0) : (variance > 0);
+    const isNegative = lowerIsBetter ? (variance > 0) : (variance < 0);
+    const varClass = isPositive ? 'positive' : (isNegative ? 'negative' : 'neutral');
+    // Arrow direction reflects variance sign only (up if actual > plan, down if actual < plan)
+    const arrow = variance>0 ? '↗ +' : (variance<0 ? '↘ ' : '↔ ');
+    let actualDisplay, planDisplay;
+
+    if (format==='currency') {
+      actualDisplay = '₹' + actual.toLocaleString('en-IN', { maximumFractionDigits:0 });
+      planDisplay = '₹' + plan.toLocaleString('en-IN', { maximumFractionDigits:0 });
+    } else if (format==='integer') {
+      actualDisplay = Math.round(actual).toLocaleString('en-IN');
+      planDisplay = Math.round(plan).toLocaleString('en-IN');
+    } else if (format==='decimal') {
+      // show 2 decimals for CPL/ROAS
+      actualDisplay = Number(actual).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+      planDisplay = Number(plan).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 });
+    } else if (format==='percentage') {
+      actualDisplay = Number(actual).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 }) + '%';
+      planDisplay = Number(plan).toLocaleString('en-IN', { minimumFractionDigits:2, maximumFractionDigits:2 }) + '%';
+    } else {
+      actualDisplay = Number(actual).toLocaleString('en-IN', { maximumFractionDigits:2 });
+      planDisplay = Number(plan).toLocaleString('en-IN', { maximumFractionDigits:2 });
+    }
+
+    return `<div class="metric-cell">
+      <span class="actual-value">${actualDisplay}</span>
+      <span class="plan-value">Plan: ${planDisplay}</span>
+      <span class="variance ${varClass}">${arrow}${Math.abs(variance).toFixed(1)}%</span>
+    </div>`;
+  }
+
+  /****************** Helper: quarter ******************/
+  function getQuarter(monthIndex){
+    if (monthIndex <= 2) return 'Q1';
+    if (monthIndex <= 5) return 'Q2';
+    if (monthIndex <= 8) return 'Q3';
+    return 'Q4';
+  }
+
+  function rowMatchesDurationFilters(row, filters = currentFilterState){
+    if (!row) return false;
+    const {
+      durationType = 'all',
+      selectedMonth = '',
+      selectedYearForMonth = '',
+      selectedQuarter = '',
+      selectedYear = ''
+    } = filters || {};
+
+    if (durationType === 'month') {
+      if (selectedMonth && row.month !== selectedMonth) return false;
+      if (selectedYearForMonth && String(row.year) !== String(selectedYearForMonth)) return false;
+    }
+
+    if (durationType === 'quarter') {
+      if (selectedYear && String(row.year) !== String(selectedYear)) return false;
+      const monthIdx = typeof row.monthIndex === 'number'
+        ? row.monthIndex
+        : (monthMap[(row.month || '').toLowerCase()] ?? 0);
+      if (selectedQuarter && getQuarter(monthIdx) !== selectedQuarter) return false;
+    }
+
+    if (durationType === 'year') {
+      if (selectedYear && String(row.year) !== String(selectedYear)) return false;
+    }
+
+    return true;
+  }
+
+  function rowMatchesActiveFilters(row, filters = currentFilterState){
+    if (!row) return false;
+    const { selectedCluster = '' } = filters || {};
+    if (selectedCluster && row.cluster !== selectedCluster) return false;
+    return rowMatchesDurationFilters(row, filters);
+  }
+
+  function refreshRankingSources(){
+    rankingFilteredUniversityRows = allData.filter(row => rowMatchesDurationFilters(row));
+    rankingFilteredCourseRows = courseData.filter(row => rowMatchesDurationFilters(row));
+  }
+
+  /****************** Enter / Exit University View ******************/
+  function enterUniversity(uniName){
+    currentUniversity = uniName;
+    inUniversityView = true;
+    // update UI filters title and show back button
+    document.getElementById('backToMainBtn').style.display = 'inline-block';
+    // Apply filters now (will detect inUniversityView and use courseData for table)
+    applyFilters();
+    // ensure charts use filtered data
+    initPerformanceChartWhenReady(); // re-init watchers (they will draw from filtered data)
+    initYTDChartWhenReady();
+  }
+
+  function exitUniversityView(){
+    currentUniversity = null;
+    inUniversityView = false;
+    document.getElementById('backToMainBtn').style.display = 'none';
+    applyFilters();
+    initPerformanceChartWhenReady();
+    initYTDChartWhenReady();
+  }
+
+  /****************** PERFORMANCE TREND CHART (uses allData or filtered by uni) ******************/
+  let performanceChartInstance = null;
+
+  function getMonthlyMetrics(metricKey){
+    // Choose dataset based on view: if inUniversityView -> use allData filtered to that university; else use full allData
+    let source = inUniversityView && currentUniversity ? allData.filter(r=> r.university===currentUniversity) : allData.slice();
+    // Apply cluster filter on main dashboard
+    if (!inUniversityView) {
+      const clusterSel = (document.getElementById('cluster') && document.getElementById('cluster').value) || '';
+      if (clusterSel) source = source.filter(r=> (r.cluster || '') === clusterSel);
+    }
+
+    const monthly = {};
+    source.forEach(r=>{
+      const m = r.month || '';
+      if (!monthly[m]) monthly[m] = { spendActual:0, spendPlan:0, leadsActual:0, leadsPlan:0, admissionsActual:0, admissionsPlan:0, revenueActual:0, revenuePlan:0, actual:0, plan:0 };
+      monthly[m].spendActual += Number(r.spend.actual||0);
+      monthly[m].spendPlan += Number(r.spend.plan||0);
+      monthly[m].leadsActual += Number(r.leads.actual||0);
+      monthly[m].leadsPlan += Number(r.leads.plan||0);
+      monthly[m].admissionsActual += Number(r.admissions.actual||0);
+      monthly[m].admissionsPlan += Number(r.admissions.plan||0);
+      monthly[m].revenueActual += Number(r.revenue.actual||0);
+      monthly[m].revenuePlan += Number(r.revenue.plan||0);
+    });
+
+    const monthsOrder = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+    const monthLabels=[], actualArr=[], planArr=[];
+    monthsOrder.forEach(m=>{
+      if (!monthly[m]) return;
+      let actual=0, plan=0;
+      const d = monthly[m];
+      switch(metricKey){
+        case 'Leads': actual = d.leadsActual; plan = d.leadsPlan; break;
+        case 'Admissions': actual = d.admissionsActual; plan = d.admissionsPlan; break;
+        case 'Revenue': actual = d.revenueActual; plan = d.revenuePlan; break;
+        case 'Spend': actual = d.spendActual; plan = d.spendPlan; break;
+        case 'P&L': actual = d.revenueActual - d.spendActual; plan = d.revenuePlan - d.spendPlan; break;
+        case 'CPL': actual = d.leadsActual>0 ? d.spendActual / d.leadsActual : 0; plan = d.leadsPlan>0 ? d.spendPlan / d.leadsPlan : 0; break;
+        case 'Conversion Rate': actual = d.leadsActual>0 ? (d.admissionsActual / d.leadsActual)*100 : 0; plan = d.leadsPlan>0 ? (d.admissionsPlan / d.leadsPlan)*100 : 0; break;
+        case 'ROAS': actual = d.spendActual>0 ? d.revenueActual / d.spendActual : 0; plan = d.spendPlan>0 ? d.revenuePlan / d.spendPlan : 0; break;
+        default: actual = 0; plan = 0;
+      }
+      monthLabels.push(m);
+      actualArr.push(actual);
+      planArr.push(plan);
+    });
+
+    return { monthLabels, actualArr, planArr };
+  }
+
+  function formatMetricValue(value, metric){
+    if (["Revenue","Spend","P&L"].includes(metric)) return '₹' + Number(value).toLocaleString('en-IN',{maximumFractionDigits:0});
+    if (metric === 'Conversion Rate') return Number(value).toFixed(2) + '%';
+    if (metric === 'ROAS') return Number(value).toFixed(2);
+    if (["Leads","Admissions"].includes(metric)) return Number(value).toLocaleString('en-IN',{maximumFractionDigits:0});
+    return Number(value).toLocaleString('en-IN',{maximumFractionDigits:2});
+  }
+
+  function drawPerformanceTrend(metric, duration){
+    const { monthLabels, actualArr, planArr } = getMonthlyMetrics(metric);
+    const displayCount = duration===3?3: duration===6?6: duration===7?7:12;
+    const labels = monthLabels.slice(0, displayCount);
+    const actualValues = actualArr.slice(0, displayCount);
+    const planValues = planArr.slice(0, displayCount);
+
+    const ctx = document.getElementById('performanceChart').getContext('2d');
+    if (performanceChartInstance) performanceChartInstance.destroy();
+    const gradient = ctx.createLinearGradient(0,0,0,400);
+    gradient.addColorStop(0,'rgba(37,99,235,0.35)');
+    gradient.addColorStop(1,'rgba(37,99,235,0.05)');
+
+    performanceChartInstance = new Chart(ctx, {
+      type:'line',
+      data:{ labels, datasets:[
+        { label:`Actual ${metric}`, data: actualValues, borderColor:'#2563eb', backgroundColor:gradient, fill:true, tension:0.4, borderWidth:2.2, pointRadius:4, pointBackgroundColor:'#2563eb' },
+        { label:`Planned ${metric}`, data: planValues, borderColor:'#93c5fd', borderDash:[5,5], tension:0.4, borderWidth:1.8, pointRadius:3, pointBackgroundColor:'#93c5fd' }
+      ]},
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        plugins:{
+          legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8 } },
+          tooltip:{
+            callbacks:{ label: function(context){ return `${context.dataset.label}: ${formatMetricValue(context.parsed.y, metric)}`; } }
+          }
+        },
+        scales:{
+          y:{ ticks:{ callback: val => formatMetricValue(val, metric), color:'#374151' }, grid:{ color:'#f3f4f6' } },
+          x:{ ticks:{ color:'#6b7280' }, grid:{ display:false } }
+        }
+      }
+    });
+  }
+
+  // ensure performance chart initializes once data is available and default chart shows automatically
+  function initPerformanceChartWhenReady(){
+    const interval = setInterval(()=>{
+      if (typeof allData !== 'undefined' && allData.length >= 0) {
+        clearInterval(interval);
+        const metricSelect = document.getElementById('metricSelect');
+        const durationSelect = document.getElementById('durationSelect');
+        // draw default
+        drawPerformanceTrend(metricSelect.value, parseInt(durationSelect.value));
+        // listeners
+        metricSelect.onchange = ()=> drawPerformanceTrend(metricSelect.value, parseInt(durationSelect.value));
+        durationSelect.onchange = ()=> drawPerformanceTrend(metricSelect.value, parseInt(durationSelect.value));
+      }
+    }, 200);
+  }
+
+  /****************** YTD Chart (Cumulative within selected year) ******************/
+  let ytdChartInstance = null;
+  const monthsOrder = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+
+  function populateYearDropdownForYTD(){
+    const years = [...new Set(allData.map(r=>r.year))].filter(y=>y).sort((a,b)=>b-a);
+    const yearSelect = document.getElementById('yearSelect');
+    yearSelect.innerHTML = '';
+    years.forEach(y=> { const opt=document.createElement('option'); opt.value=y; opt.textContent=y; yearSelect.appendChild(opt); });
+    if (years.length) yearSelect.value = years[0];
+  }
+
+  function getYTDMonthlyMetrics(metricKey, selectedYear){
+    // use allData filtered by selectedYear, cluster (main view), and university (uni view)
+    const clusterSel = (!inUniversityView && document.getElementById('cluster')) ? document.getElementById('cluster').value : '';
+    const filtered = allData.filter(r=> {
+      if (selectedYear && r.year !== selectedYear) return false;
+      if (inUniversityView && currentUniversity && r.university !== currentUniversity) return false;
+      if (!inUniversityView && clusterSel && (r.cluster || '') !== clusterSel) return false;
+      return true;
+    });
+
+    const monthly = {};
+    filtered.forEach(r=>{
+      const m = r.month || '';
+      if (!monthly[m]) monthly[m] = { spendActual:0, spendPlan:0, leadsActual:0, leadsPlan:0, admissionsActual:0, admissionsPlan:0, revenueActual:0, revenuePlan:0 };
+      monthly[m].spendActual += Number(r.spend.actual||0); monthly[m].spendPlan += Number(r.spend.plan||0);
+      monthly[m].leadsActual += Number(r.leads.actual||0); monthly[m].leadsPlan += Number(r.leads.plan||0);
+      monthly[m].admissionsActual += Number(r.admissions.actual||0); monthly[m].admissionsPlan += Number(r.admissions.plan||0);
+      monthly[m].revenueActual += Number(r.revenue.actual||0); monthly[m].revenuePlan += Number(r.revenue.plan||0);
+    });
+
+    const monthLabels = [], actualArr = [], planArr = [];
+    // cumulative
+    let cum = { spendActual:0, spendPlan:0, leadsActual:0, leadsPlan:0, admissionsActual:0, admissionsPlan:0, revenueActual:0, revenuePlan:0 };
+
+    monthsOrder.forEach(m=>{
+      if (!monthly[m]) return;
+      const d = monthly[m];
+      cum.spendActual += d.spendActual; cum.spendPlan += d.spendPlan;
+      cum.leadsActual += d.leadsActual; cum.leadsPlan += d.leadsPlan;
+      cum.admissionsActual += d.admissionsActual; cum.admissionsPlan += d.admissionsPlan;
+      cum.revenueActual += d.revenueActual; cum.revenuePlan += d.revenuePlan;
+
+      let actual=0, plan=0;
+      switch(metricKey){
+        case 'Leads': actual = cum.leadsActual; plan = cum.leadsPlan; break;
+        case 'Admissions': actual = cum.admissionsActual; plan = cum.admissionsPlan; break;
+        case 'Revenue': actual = cum.revenueActual; plan = cum.revenuePlan; break;
+        case 'Spend': actual = cum.spendActual; plan = cum.spendPlan; break;
+        case 'P&L': actual = cum.revenueActual - cum.spendActual; plan = cum.revenuePlan - cum.spendPlan; break;
+        case 'CPL': actual = cum.leadsActual>0 ? cum.spendActual / cum.leadsActual : 0; plan = cum.leadsPlan>0 ? cum.spendPlan / cum.leadsPlan : 0; break;
+        case 'Conversion Rate': actual = cum.leadsActual>0 ? (cum.admissionsActual / cum.leadsActual)*100 : 0; plan = cum.leadsPlan>0 ? (cum.admissionsPlan / cum.leadsPlan)*100 : 0; break;
+        case 'ROAS': actual = cum.spendActual>0 ? cum.revenueActual / cum.spendActual : 0; plan = cum.spendPlan>0 ? cum.revenuePlan / cum.spendPlan : 0; break;
+        default: actual=0; plan=0;
+      }
+      monthLabels.push(m); actualArr.push(actual); planArr.push(plan);
+    });
+
+    return { monthLabels, actualArr, planArr };
+  }
+
+  function renderYTDChart(metricKey, selectedYear){
+    const ctx = document.getElementById('ytdPerformanceChart').getContext('2d');
+    const { monthLabels, actualArr, planArr } = getYTDMonthlyMetrics(metricKey, selectedYear);
+    if (ytdChartInstance) ytdChartInstance.destroy();
+
+    ytdChartInstance = new Chart(ctx, {
+      type:'bar',
+      data:{
+        labels: monthLabels,
+        datasets:[
+          { label:'Planned', data: planArr, backgroundColor:'#93c5fd', borderRadius:6, barThickness:20 },
+          { label:'Actual', data: actualArr, backgroundColor:'#3b82f6', borderRadius:6, barThickness:20 },
+          { type:'line', label:'Actual Trend', data: actualArr, borderColor:'#10b981', tension:0.4, fill:false, pointRadius:4, pointBackgroundColor:'#10b981', borderWidth:2 }
+        ]
+      },
+      options:{
+        responsive:true, maintainAspectRatio:false,
+        interaction:{ mode:'index', intersect:false },
+        plugins:{
+          legend:{ position:'bottom', labels:{ usePointStyle:true, boxWidth:8 } },
+          tooltip:{
+            callbacks:{ label: function(context){ return `${context.dataset.label}: ${formatMetricValue(context.parsed.y, metricKey)}`; } }
+          }
+        },
+        scales:{
+          y:{ ticks:{ callback: val => formatMetricValue(val, metricKey), color:'#374151' }, grid:{ color:'#f3f4f6' } },
+          x:{ ticks:{ color:'#6b7280' }, grid:{ display:false } }
+        }
+      }
+    });
+  }
+
+  function initYTDChartWhenReady(){
+    const interval = setInterval(()=>{
+      if (typeof allData !== 'undefined' && allData.length >= 0) {
+        clearInterval(interval);
+        populateYearDropdownForYTD();
+        const defaultYear = parseInt(document.getElementById('yearSelect').value) || new Date().getFullYear();
+        const metricSelect = document.getElementById('ytdMetricSelect');
+        renderYTDChart(metricSelect.value, defaultYear);
+        metricSelect.onchange = ()=> renderYTDChart(metricSelect.value, parseInt(document.getElementById('yearSelect').value));
+        document.getElementById('yearSelect').onchange = ()=> renderYTDChart(metricSelect.value, parseInt(document.getElementById('yearSelect').value));
+      }
+    },200);
+  }
+
+  /****************** Performance Tables (Top/Bottom Rankings) ******************/
+  function updatePerformanceTables() {
+    if (inUniversityView) return;
+    
+    const toggle = document.getElementById('tableToggle');
+    const isTop = toggle.checked;
+    const metric = document.getElementById('rankingMetric').value;
+    
+    // Update toggle label
+    document.getElementById('toggleLabel').textContent = isTop ? 'Top' : 'Bottom';
+    
+    // Update table titles
+    document.getElementById('universitiesTableTitle').textContent = 
+      (isTop ? 'Top 10 Universities' : 'Bottom 10 Universities') + ' by ' + getMetricDisplayName(metric);
+    document.getElementById('coursesTableTitle').textContent = 
+      (isTop ? 'Top 10 Courses' : 'Bottom 10 Courses') + ' by ' + getMetricDisplayName(metric);
+    
+    // Update metric headers
+    document.getElementById('universitiesMetricHeader').textContent = getMetricDisplayName(metric);
+    document.getElementById('coursesMetricHeader').textContent = getMetricDisplayName(metric);
+    
+    // Generate and render tables
+    renderUniversitiesTable(metric, isTop);
+    renderCoursesTable(metric, isTop);
+  }
+
+  function getMetricDisplayName(metricKey) {
+    const metricNames = {
+      'leads': 'Leads',
+      'admissions': 'Admissions',
+      'spend': 'Spend',
+      'revenue': 'Revenue',
+      'pl': 'P&L',
+      'cpl': 'CPL',
+      'roas': 'ROAS',
+      'conversionRate': 'Conversion Rate'
+    };
+    return metricNames[metricKey] || metricKey;
+  }
+
+  function getMetricValue(item, metricKey) {
+    switch(metricKey) {
+      case 'leads': return item.leads.actual;
+      case 'admissions': return item.admissions.actual;
+      case 'spend': return item.spend.actual;
+      case 'revenue': return item.revenue.actual;
+      case 'pl': return item.pl.actual;
+      case 'cpl': return item.cpl.actual;
+      case 'roas': return item.roas.actual;
+      case 'conversionRate': 
+        return item.leads.actual > 0 ? (item.admissions.actual / item.leads.actual) * 100 : 0;
+      default: return 0;
+    }
+  }
+
+  function formatMetricValueForTable(value, metricKey) {
+    switch(metricKey) {
+      case 'leads':
+      case 'admissions':
+        return Math.round(value).toLocaleString('en-IN');
+      case 'spend':
+      case 'revenue':
+      case 'pl':
+        return '₹' + Math.round(value).toLocaleString('en-IN');
+      case 'cpl':
+        return '₹' + value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      case 'roas':
+        return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+      case 'conversionRate':
+        return value.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + '%';
+      default:
+        return value.toLocaleString('en-IN');
+    }
+  }
+
+  function renderUniversitiesTable(metricKey, isTop) {
+    const sourceRows = rankingFilteredUniversityRows;
+    const universityAgg = {};
+    sourceRows.forEach(r => {
+      const key = r.university || 'Unknown';
+      if (!universityAgg[key]) {
+        universityAgg[key] = {
+          university: key,
+          leads: { actual: 0, plan: 0 },
+          admissions: { actual: 0, plan: 0 },
+          revenue: { actual: 0, plan: 0 },
+          spend: { actual: 0, plan: 0 }
+        };
+      }
+      
+      const a = universityAgg[key];
+      a.leads.actual += Number(r.leads.actual || 0);
+      a.leads.plan += Number(r.leads.plan || 0);
+      a.admissions.actual += Number(r.admissions.actual || 0);
+      a.admissions.plan += Number(r.admissions.plan || 0);
+      a.revenue.actual += Number(r.revenue.actual || 0);
+      a.revenue.plan += Number(r.revenue.plan || 0);
+      a.spend.actual += Number(r.spend.actual || 0);
+      a.spend.plan += Number(r.spend.plan || 0);
+    });
+
+    // Compute derived metrics
+    Object.values(universityAgg).forEach(a => {
+      a.pl = {
+        actual: a.revenue.actual - a.spend.actual,
+        plan: a.revenue.plan - a.spend.plan
+      };
+      a.cpl = {
+        actual: a.leads.actual > 0 ? a.spend.actual / a.leads.actual : 0,
+        plan: a.leads.plan > 0 ? a.spend.plan / a.leads.plan : 0
+      };
+      a.roas = {
+        actual: a.spend.actual > 0 ? a.revenue.actual / a.spend.actual : 0,
+        plan: a.spend.plan > 0 ? a.revenue.plan / a.spend.plan : 0
+      };
+    });
+
+    // Convert to array and sort by selected metric
+    const universities = Object.values(universityAgg);
+    const tbody = document.getElementById('universitiesTableBody');
+    
+    if (!sourceRows.length || !universities.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="3" class="no-data-message">Data is not available for the chosen duration.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    universities.sort((a, b) => {
+      const aValue = getMetricValue(a, metricKey);
+      const bValue = getMetricValue(b, metricKey);
+      return isTop ? bValue - aValue : aValue - bValue;
+    });
+
+    // Take top/bottom 10
+    const topUniversities = universities.slice(0, 10);
+    
+    // Render table
+    let html = '';
+    
+    topUniversities.forEach((uni, index) => {
+      const rank = isTop ? index + 1 : universities.length - 9 + index;
+      const value = getMetricValue(uni, metricKey);
+      const formattedValue = formatMetricValueForTable(value, metricKey);
+      
+      html += `
+        <tr>
+          <td class="rank">${rank}</td>
+          <td>${escapeHtml(uni.university)}</td>
+          <td class="metric-value">${formattedValue}</td>
+        </tr>
+      `;
+    });
+    
+    tbody.innerHTML = html;
+  }
+
+  function renderCoursesTable(metricKey, isTop) {
+    const sourceRows = rankingFilteredCourseRows;
+    const courseAgg = {};
+    sourceRows.forEach(r => {
+      const key = r.course || 'Unknown Course';
+      if (!courseAgg[key]) {
+        courseAgg[key] = {
+          course: key,
+          university: r.university,
+          leads: { actual: 0, plan: 0 },
+          admissions: { actual: 0, plan: 0 },
+          revenue: { actual: 0, plan: 0 },
+          spend: { actual: 0, plan: 0 }
+        };
+      }
+      
+      const a = courseAgg[key];
+      a.leads.actual += Number(r.leads.actual || 0);
+      a.leads.plan += Number(r.leads.plan || 0);
+      a.admissions.actual += Number(r.admissions.actual || 0);
+      a.admissions.plan += Number(r.admissions.plan || 0);
+      a.revenue.actual += Number(r.revenue.actual || 0);
+      a.revenue.plan += Number(r.revenue.plan || 0);
+      a.spend.actual += Number(r.spend.actual || 0);
+      a.spend.plan += Number(r.spend.plan || 0);
+    });
+
+    // Compute derived metrics
+    Object.values(courseAgg).forEach(a => {
+      a.pl = {
+        actual: a.revenue.actual - a.spend.actual,
+        plan: a.revenue.plan - a.spend.plan
+      };
+      a.cpl = {
+        actual: a.leads.actual > 0 ? a.spend.actual / a.leads.actual : 0,
+        plan: a.leads.plan > 0 ? a.spend.plan / a.leads.plan : 0
+      };
+      a.roas = {
+        actual: a.spend.actual > 0 ? a.revenue.actual / a.spend.actual : 0,
+        plan: a.spend.plan > 0 ? a.revenue.plan / a.spend.plan : 0
+      };
+    });
+
+    // Convert to array and sort by selected metric
+    const courses = Object.values(courseAgg);
+    const tbody = document.getElementById('coursesTableBody');
+    
+    if (!sourceRows.length || !courses.length) {
+      tbody.innerHTML = `
+        <tr>
+          <td colspan="4" class="no-data-message">Data is not available for the chosen duration.</td>
+        </tr>
+      `;
+      return;
+    }
+
+    courses.sort((a, b) => {
+      const aValue = getMetricValue(a, metricKey);
+      const bValue = getMetricValue(b, metricKey);
+      return isTop ? bValue - aValue : aValue - bValue;
+    });
+
+    // Take top/bottom 10
+    const topCourses = courses.slice(0, 10);
+    
+    // Render table
+    let html = '';
+    
+    topCourses.forEach((course, index) => {
+      const rank = isTop ? index + 1 : courses.length - 9 + index;
+      const value = getMetricValue(course, metricKey);
+      const formattedValue = formatMetricValueForTable(value, metricKey);
+      
+      html += `
+        <tr>
+          <td class="rank">${rank}</td>
+          <td>${escapeHtml(course.course)}</td>
+          <td>${escapeHtml(course.university)}</td>
+          <td class="metric-value">${formattedValue}</td>
+        </tr>
+      `;
+    });
+    
+    tbody.innerHTML = html;
+  }
+
+  /****************** Boot ******************/
+  window.onload = init;
+  </script>
+</body>
+</html>
